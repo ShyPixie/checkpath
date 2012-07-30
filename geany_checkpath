@@ -1,45 +1,58 @@
 #!/bin/bash
 # Autor: Lara Maia <lara@craft.net.br>
-# Versão: 0.3
+# Versão: 0.5
 IFS=$(echo -en "\n\b")
 
-if [ `id -u` == 0 ]; then geany $@; fi
+export geany_user=mrk3004
+export geany_params=${@}
+export geany_confpath=/home/${geany_user}/.config/geany
+export geany_rootsocket=${geany_confpath}/geany_root_socket
 
-function root_open() {
-	export geany_params=${@}
-	export geany_user=mrk3004
-	export geany_confpath=/home/${geany_user}/.config/geany
-	gksudo -m "Digite sua senha" geany ${geany_params}
-	gksudo 'chown -R ${geany_user} ${geany_confpath}'
-	for file in ${geany_params}; do
-		if [ "`cat "$file"`" == "" ]; then
-			gksudo 'rm -f "'$file'"'
-		fi
-	done
-	unset geany_params geany_user geany_confpath
+function exitchecks() {
+	unset geany_params
+	unset geany_rootsocket
+	unset geany_user geany_confpath
 }
 
+trap exitchecks EXIT INT TERM
+
+if [ `id -u` == 0 ]; then
+	(geany --socket-file ${geany_rootsocket} $@) &
+	exit 0
+fi
+
+function root_open() {
+	gksudo -m "Digite sua senha" 'echo "Acesso ao /root liberado"'
+	if [ ! -f "$file" ]; then 
+		gksudo "touch '$file'"
+	fi
+	gksudo "geany --socket-file ${geany_rootsocket} '${geany_params}'"
+	for file in ${geany_params}; do
+		if [ "`cat "$file"`" == "" ]; then
+			gksudo "rm -f '$file'"
+		fi
+	done
+} 
+
 function user_open() {
-	export geany_params=${@}
 	geany ${geany_params}
 	for file in ${geany_params}; do
 		if [ "`cat "$file"`" == "" ]; then
-			rm -f $file
+			rm -f "$file"
 		fi
 	done
-	unset geany_params
 }
 
-for file in ${@}; do
+for file in ${geany_params}; do
 	if [ ! -f "$file" ]; then
 		touch "$file" 2>/dev/null
 		if [ $? != 0 ]; then
-			root_open "${@}" & exit 0
+			root_open "${geany_params}" & exit 0
 		fi
 	fi
-	if [ `ls -l "$file" | awk '{print $4}'` == root ]; then
-		root_open "${@}" & exit 0
+	if [ `ls -l "$file" | awk '{print $3}'` == "root" ]; then
+		root_open "${geany_params}" & exit 0
 	fi
 done
 
-user_open "${@}" & exit 0
+user_open "${geany_params}" & exit 0
