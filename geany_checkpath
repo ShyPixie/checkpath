@@ -23,10 +23,11 @@ fi
 
 function root_open() {
 	gksudo -m "Digite sua senha" 'echo "Acesso ao /root liberado"'
-	if [ ! -f "$file" ]; then 
-		gksudo "touch '$file'"
-	fi
-	gksudo "geany --socket-file ${geany_rootsocket} '${geany_params}'"
+	for file in ${geany_params}; do
+		if [ ! -f "$file" ]; then gksudo "touch '$file'"; fi
+		(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+		sleep .2
+	done; wait
 	for file in ${geany_params}; do
 		if [ "`cat "$file"|| echo nodel`" == "" ]; then
 			gksudo "rm -f '$file'"
@@ -35,7 +36,10 @@ function root_open() {
 } 
 
 function user_open() {
-	geany ${geany_params}
+	for file in ${geany_params}; do
+		(geany "${file}") &
+		sleep .2
+	done; wait
 	for file in ${geany_params}; do
 		if [ "`cat "$file"`" == "" ]; then
 			rm -f "$file"
