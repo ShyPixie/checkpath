@@ -1,62 +1,38 @@
 #!/bin/bash
 # Autor: Lara Maia <lara@craft.net.br>
-# Versão: 0.5.2
+# Versão: 1.0
 IFS=$(echo -en "\n\b")
 
-export geany_user=mrk3004
-export geany_params=${@}
-export geany_confpath=/home/${geany_user}/.config/geany
-export geany_rootsocket=${geany_confpath}/geany_root_socket
-
-function exitchecks() {
-	unset geany_params
-	unset geany_rootsocket
-	unset geany_user geany_confpath
-}
-
-trap exitchecks EXIT INT TERM
+geany_user=mrk3004
+geany_confpath=/home/${geany_user}/.config/geany
+geany_rootsocket=${geany_confpath}/geany_root_socket
 
 if [ `id -u` == 0 ]; then
 	(geany --socket-file ${geany_rootsocket} $@) &
 	exit 0
 fi
 
-function root_open() {
-	gksudo -m "Digite sua senha" 'echo "Acesso ao /root liberado"'
-	for file in ${geany_params}; do
-		if [ ! -f "$file" ]; then gksudo "touch '$file'"; fi
-		(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
-		sleep .2
-	done; wait
-	for file in ${geany_params}; do
-		if [ "`cat "$file"|| echo nodel`" == "" ]; then
-			gksudo "rm -f '$file'"
+for file in ${@}; do
+	if [ "${file:0:1}" == "/" ]; then
+		test=${file%/*}; if [ "$test" == "" ]; then test="/"; fi
+		if [ "$(ls -l -d ${test}|awk '{print $3}')" == "root" ]; then
+			gksudo -m "Digite sua senha:" "echo -n"
+			(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+		else
+			(geany "${file}") &
 		fi
-	done
-} 
-
-function user_open() {
-	for file in ${geany_params}; do
-		(geany "${file}") &
-		sleep .2
-	done; wait
-	for file in ${geany_params}; do
-		if [ "`cat "$file"`" == "" ]; then
-			rm -f "$file"
-		fi
-	done
-}
-
-for file in ${geany_params}; do
-	if [ ! -f "$file" ]; then
-		touch "$file" 2>/dev/null
-		if [ $? != 0 ]; then
-			root_open "${geany_params}" & exit 0
+	else
+		if [ "$(ls -l -d `pwd`|awk '{print $3}')" == "root" ]; then
+			gksudo -m "Digite sua senha:" "echo -n"
+			(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+		else
+			(geany "${file}") &
 		fi
 	fi
-	if [ `ls -l "$file" | awk '{print $3}'` == "root" ]; then
-		root_open "${geany_params}" & exit 0
-	fi
+	sleep .3
 done
 
-user_open "${geany_params}" & exit 0
+# quick fix to the cursor
+xsetroot -cursor_name left_ptr
+exit 0
+
