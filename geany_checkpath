@@ -1,6 +1,6 @@
 #!/bin/bash
 # Autor: Lara Maia <lara@craft.net.br>
-# Versão: 0.5
+# Versão: 0.5.2
 IFS=$(echo -en "\n\b")
 
 export geany_user=mrk3004
@@ -28,7 +28,7 @@ function root_open() {
 	fi
 	gksudo "geany --socket-file ${geany_rootsocket} '${geany_params}'"
 	for file in ${geany_params}; do
-		if [ "`cat "$file"`" == "" ]; then
+		if [ "`cat "$file"|| echo nodel`" == "" ]; then
 			gksudo "rm -f '$file'"
 		fi
 	done
