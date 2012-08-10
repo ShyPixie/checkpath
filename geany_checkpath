@@ -1,6 +1,6 @@
 #!/bin/bash
 # Autor: Lara Maia <lara@craft.net.br>
-# Versão: 1.0
+# Versão: 1.1
 IFS=$(echo -en "\n\b")
 
 geany_user=mrk3004
@@ -12,19 +12,30 @@ if [ `id -u` == 0 ]; then
 	exit 0
 fi
 
+function root_open() {
+# $1 = WM
+# $2 = socket
+# $3 = file
+	if [ "${DESKTOP_SESSION%%-*}" == "kde" ]; then
+		kdesudo -d --comment "Digite sua senha:" "echo -n"
+		(kdesudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+	else
+		gksudo -m "Digite sua senha:" "echo -n"
+		(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+	fi
+}
+
 for file in ${@}; do
 	if [ "${file:0:1}" == "/" ]; then
 		test=${file%/*}; if [ "$test" == "" ]; then test="/"; fi
 		if [ "$(ls -l -d ${test}|awk '{print $3}')" == "root" ]; then
-			gksudo -m "Digite sua senha:" "echo -n"
-			(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+			root_open ${DESKTOP_SESSION%%-*} ${geany_rootsocket} "${file}"
 		else
 			(geany "${file}") &
 		fi
 	else
 		if [ "$(ls -l -d `pwd`|awk '{print $3}')" == "root" ]; then
-			gksudo -m "Digite sua senha:" "echo -n"
-			(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+			root_open ${DESKTOP_SESSION%%-*} ${geany_rootsocket} "${file}"
 		else
 			(geany "${file}") &
 		fi
