@@ -18,9 +18,17 @@ function root_open() {
 # $3 = file
 	if [ "${DESKTOP_SESSION%%-*}" == "kde" ]; then
 		kdesudo -d --comment "Digite sua senha:" "echo -n"
+		if [ $? != 0 ]; then
+			kdialog --error "Senha incorreta.\nSaindo."
+			exit 1
+		fi
 		(kdesudo "geany --socket-file ${geany_rootsocket} '${file}'") &
 	else
 		gksudo -m "Digite sua senha:" "echo -n"
+		if [ $? != 0 ]; then
+			zenity --warning --text="Senha incorreta.\nSaindo."
+			exit 1
+		fi
 		(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
 	fi
 }
