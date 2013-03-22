@@ -1,9 +1,9 @@
 #!/bin/bash
-# Autor: Lara Maia <lara@craft.net.br>
-# Versão: 1.1
+# Autor: Lara Maia <lara@craft.net.br> © 2012~2013
+# Versão: 1.2
 IFS=$(echo -en "\n\b")
 
-geany_user=mrk3004
+geany_user=laracraft304
 geany_confpath=/home/${geany_user}/.config/geany
 geany_rootsocket=${geany_confpath}/geany_root_socket
 
@@ -12,24 +12,42 @@ if [ `id -u` == 0 ]; then
 	exit 0
 fi
 
+if [ ! -e /usr/bin/gnome-keyring ]; then
+	msg1="O geany_checkpath não funcionará corretamente"
+	msg2="sem o pacote gnome-keyring instalado."
+	if [ "${DESKTOP_SESSION%%-*}" == "kde" ]; then
+		kdialog --error "$msg1\n$msg2\n\nSaindo."
+	else
+		yad --title="Geany Checkpath" \
+	    --button=Ok                   \
+	    --window-icon=error           \
+	    --image=dialog-warning        \
+	    --text="$msg1\n$msg2\n\nSaindo."
+	fi
+	exit 1
+fi
+
 function root_open() {
-# $1 = WM
-# $2 = socket
-# $3 = file
+# $1 = socket
+# $2 = file
 	if [ "${DESKTOP_SESSION%%-*}" == "kde" ]; then
 		kdesudo -d --comment "Digite sua senha:" "echo -n"
 		if [ $? != 0 ]; then
 			kdialog --error "Senha incorreta.\nSaindo."
 			exit 1
 		fi
-		(kdesudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+		(kdesudo "geany --socket-file '$1' '$2'") &
 	else
-		gksudo -m "Digite sua senha:" "echo -n"
+		gksu -m "Digite sua senha:" "echo -n"
 		if [ $? != 0 ]; then
-			zenity --warning --text="Senha incorreta.\nSaindo."
+			yad --title="Geany Checkpath" \
+			    --button=Ok                \
+			    --window-icon=error         \
+			    --image=dialog-warning       \
+			    --text="Senha incorreta\nSaindo."
 			exit 1
 		fi
-		(gksudo "geany --socket-file ${geany_rootsocket} '${file}'") &
+		(gksu "geany --socket-file '$1' '$2'") &
 	fi
 }
 
@@ -37,13 +55,13 @@ for file in ${@}; do
 	if [ "${file:0:1}" == "/" ]; then
 		test=${file%/*}; if [ "$test" == "" ]; then test="/"; fi
 		if [ "$(ls -l -d ${test}|awk '{print $3}')" == "root" ]; then
-			root_open ${DESKTOP_SESSION%%-*} ${geany_rootsocket} "${file}"
+			root_open ${geany_rootsocket} "${file}"
 		else
 			(geany "${file}") &
 		fi
 	else
 		if [ "$(ls -l -d `pwd`|awk '{print $3}')" == "root" ]; then
-			root_open ${DESKTOP_SESSION%%-*} ${geany_rootsocket} "${file}"
+			root_open ${geany_rootsocket} "${file}"
 		else
 			(geany "${file}") &
 		fi
