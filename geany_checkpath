@@ -1,75 +1,47 @@
 #!/bin/bash
 # Autor: Lara Maia <lara@craft.net.br> © 2012~2013
-# Versão: 1.2
+# Versão: 2.0.1
+# --------------------
+
+# Fix Paths with spaces
 IFS=$(echo -en "\n\b")
 
-geany_user=laracraft304
-geany_confpath=/home/${geany_user}/.config/geany
-geany_rootsocket=${geany_confpath}/geany_root_socket
+# -- CONFIG -- #
+user=laracraft304
+pass=666d706c706d6134650a
+root_socket=/root/.geany_root_socket
+# ------------ #
 
 if [ `id -u` == 0 ]; then
-	(geany --socket-file ${geany_rootsocket} $@) &
+	(geany --socket-file $root_socket $@) &
 	exit 0
 fi
 
-if [ ! -e /usr/bin/gnome-keyring ]; then
-	msg1="O geany_checkpath não funcionará corretamente"
-	msg2="sem o pacote gnome-keyring instalado."
-	if [ "${DESKTOP_SESSION%%-*}" == "kde" ]; then
-		kdialog --error "$msg1\n$msg2\n\nSaindo."
-	else
-		yad --title="Geany Checkpath" \
-	    --button=Ok                   \
-	    --window-icon=error           \
-	    --image=dialog-warning        \
-	    --text="$msg1\n$msg2\n\nSaindo."
-	fi
-	exit 1
-fi
-
 function root_open() {
-# $1 = socket
-# $2 = file
-	if [ "${DESKTOP_SESSION%%-*}" == "kde" ]; then
-		kdesudo -d --comment "Digite sua senha:" "echo -n"
-		if [ $? != 0 ]; then
-			kdialog --error "Senha incorreta.\nSaindo."
-			exit 1
-		fi
-		(kdesudo "geany --socket-file '$1' '$2'") &
-	else
-		gksu -m "Digite sua senha:" "echo -n"
-		if [ $? != 0 ]; then
-			yad --title="Geany Checkpath" \
-			    --button=Ok                \
-			    --window-icon=error         \
-			    --image=dialog-warning       \
-			    --text="Senha incorreta\nSaindo."
-			exit 1
-		fi
-		(gksu "geany --socket-file '$1' '$2'") &
-	fi
+# $1 = pass | $2 = socket | $3 = file
+echo $(echo $1 | xxd -r -ps) | sudo -S geany --socket-file $2 $3
 }
 
 for file in ${@}; do
 	if [ "${file:0:1}" == "/" ]; then
-		test=${file%/*}; if [ "$test" == "" ]; then test="/"; fi
-		if [ "$(ls -l -d ${test}|awk '{print $3}')" == "root" ]; then
-			root_open ${geany_rootsocket} "${file}"
+	
+		test_file=${file%/*}
+		test "$test_file" == "" && test_file="/"
+		
+		if [ "$(ls -l -d $test_file | awk '{print $3}')" == "root" ]; then
+			(root_open $pass $root_socket "$file") &
 		else
-			(geany "${file}") &
+			(geany "$file") &
 		fi
 	else
 		if [ "$(ls -l -d `pwd`|awk '{print $3}')" == "root" ]; then
-			root_open ${geany_rootsocket} "${file}"
+			(root_open $pass $root_socket "$file") &
 		else
-			(geany "${file}") &
+			(geany "$file") &
 		fi
 	fi
 	sleep .3
 done
 
-# quick fix to the cursor
-xsetroot -cursor_name left_ptr
 exit 0
 
