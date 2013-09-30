@@ -1,16 +1,24 @@
 #!/bin/bash
 # Autor: Lara Maia <lara@craft.net.br> © 2012~2013
-# Versão: 2.0.1
+# Versão: 2.1
 # --------------------
+
+function user_not_found() {
+	echo -e '\nConfiguration file not found.'
+	echo -e 'It is need for access files with root permissions.\n'
+	echo -n "Write your password: "; read pass
+	echo -e "user=$USER\npass=$pass" > ${HOME}/.config/$(basename $0).user 
+}
 
 # Fix Paths with spaces
 IFS=$(echo -en "\n\b")
 
-# -- CONFIG -- #
-user=laracraft304
-pass=666d706c706d6134650a
+# Fix root socket
 root_socket=/root/.geany_root_socket
-# ------------ #
+
+# Config
+source ${HOME}/.config/$(basename $0).user >/dev/null 2>&1 || user_not_found
+
 
 if [ `id -u` == 0 ]; then
 	(geany --socket-file $root_socket $@) &
@@ -19,7 +27,7 @@ fi
 
 function root_open() {
 # $1 = pass | $2 = socket | $3 = file
-echo $(echo $1 | xxd -r -ps) | sudo -S geany --socket-file $2 $3
+echo $1 | sudo -S geany --socket-file $2 $3
 }
 
 for file in ${@}; do
