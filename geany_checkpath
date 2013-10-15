@@ -1,6 +1,6 @@
 #!/bin/bash
-# Autor: Lara Maia <lara@craft.net.br> © 2012~2013
-# Versão: 2.1
+# Lara Maia <lara@craft.net.br> © 2012~2013
+# Versão: 2.1.1
 # --------------------
 
 function user_not_found() {
@@ -27,7 +27,7 @@ fi
 
 function root_open() {
 # $1 = pass | $2 = socket | $3 = file
-echo $1 | sudo -S geany --socket-file $2 $3
+echo $1 | sudo 1>/dev/null -S geany --socket-file $2 $3
 }
 
 for file in ${@}; do
