@@ -1,12 +1,12 @@
 #!/bin/bash
 # Lara Maia <lara@craft.net.br> © 2012~2013
-# Versão: 2.1.1
+# Versão: 2.2
 # --------------------
 
 function user_not_found() {
 	echo -e '\nConfiguration file not found.'
 	echo -e 'It is need for access files with root permissions.\n'
-	echo -n "Write your password: "; read pass
+	read -s -p "Write your password: " pass
 	echo -e "user=$USER\npass=$pass" > ${HOME}/.config/$(basename $0).user 
 }
 
@@ -27,7 +27,13 @@ fi
 
 function root_open() {
 # $1 = pass | $2 = socket | $3 = file
-echo $1 | sudo 1>/dev/null -S geany --socket-file $2 $3
+(echo $1 | sudo -S geany --socket-file $2 $3)&>/dev/null
+if [ $? != 0 ]; then
+	echo -e "\nIncorrect password!\n"
+	echo -e "Run again to fix this.\n"
+	rm -f ${HOME}/.config/$(basename $0).user
+	exit 1
+fi
 }
 
 for file in ${@}; do
