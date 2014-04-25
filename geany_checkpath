@@ -1,7 +1,13 @@
 #!/bin/bash
-# Lara Maia <lara@craft.net.br> © 2012~2013
-# Versão: 2.2
+# Lara Maia <lara@craft.net.br> © 2012~2014
+# Versão: 2.3
 # --------------------
+
+if [ -z $DISPLAY ]; then
+	echo -e '\nX display not found.'
+	echo -e 'Use vi or nano, or start a X display.\n'
+	exit 1
+fi
 
 function user_not_found() {
 	echo -e '\nConfiguration file not found.'
