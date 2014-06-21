@@ -54,10 +54,10 @@ function check_server() {
     # wait server start
     while true; do
         if [ "$1" == "root" ]; then
-            gvim --serverlist | grep ${ROOT_SOCKET:18}
+            gvim --serverlist | grep ${ROOT_SOCKET:18} >/dev/null 2>&1
             ret=$?
         else
-            gvim --serverlist | grep ${USER_SOCKET:18}
+            gvim --serverlist | grep ${USER_SOCKET:18} >/dev/null 2>&1
             ret=$?
         fi
 
