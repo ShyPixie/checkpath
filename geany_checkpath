@@ -1,7 +1,10 @@
 #!/bin/bash
-# Lara Maia <lara@craft.net.br> © 2012~2014
+#
+# Distributed under GPL-3, See: <http://www.gnu.org/licenses/gpl.html>
+#
+# Copyright (C) 2012~2014 Lara Maia <lara@craft.net.br>
+#
 # Versão: 2.3
-# --------------------
 
 if [ -z $DISPLAY ]; then
 	echo -e '\nX display not found.'
