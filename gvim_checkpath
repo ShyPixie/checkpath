@@ -5,7 +5,7 @@
 # Copyright (C) 2012~2014 Lara Maia <lara@craft.net.br>
 #                         Fernando Manfredi <blackice@craft.net.br>
 #
-# Versão: 2.0
+# Versão: 2.1
 
 function user_not_found() {
     echo -e '\nConfiguration file not found.'
@@ -22,11 +22,6 @@ ROOT_SOCKET="gvim --servername GVIM_ROOT_CHECKPATH"
 
 # Config
 source ${HOME}/.config/$(basename $0).user >/dev/null 2>&1 || user_not_found
-
-if [ `id -u` == 0 ]; then
-    (gvim $@) &
-    exit 0
-fi
 
 function root_open() {
 # $1 = pass | $2 = file
@@ -67,25 +62,33 @@ function check_server() {
 }
 
 for file in ${@}; do
-    if [ "${file:0:1}" == "/" ]; then
+    # if already run with root user,
+    # read with root socket only.
+    if [ `id -u` == 0 ]; then
+        check_server root $pass
+        (root_open $pass "$file") &
+    # if not, check file permissions
+    else:
+        if [ "${file:0:1}" == "/" ]; then
 
-        test_file=${file%/*}
-        test "$test_file" == "" && test_file="/"
+            test_file=${file%/*}
+            test "$test_file" == "" && test_file="/"
 
-        if [ "$(ls -l -d $test_file | awk '{print $3}')" == "root" ]; then
-            check_server root $pass
-            (root_open $pass "$file") &
+            if [ "$(ls -l -d $test_file | awk '{print $3}')" == "root" ]; then
+                check_server root $pass
+                (root_open $pass "$file") &
+            else
+                check_server user
+                (eval $USER_SOCKET --remote-tab "$file") &
+            fi
         else
-            check_server user
-            (eval $USER_SOCKET --remote-tab "$file") &
-        fi
-    else
-        if [ "$(ls -l -d `pwd`|awk '{print $3}')" == "root" ]; then
-            check_server root $pass
-            (root_open $pass "$file") &
-        else
-            check_server user
-            (eval $USER_SOCKET --remote-tab "$file") &
+            if [ "$(ls -l -d `pwd`|awk '{print $3}')" == "root" ]; then
+                check_server root $pass
+                (root_open $pass "$file") &
+            else
+                check_server user
+                (eval $USER_SOCKET --remote-tab "$file") &
+            fi
         fi
     fi
     sleep .3
