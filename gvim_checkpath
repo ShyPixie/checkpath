@@ -5,7 +5,7 @@
 # Copyright (C) 2012~2014 Lara Maia <lara@craft.net.br>
 #                         Fernando Manfredi <blackice@craft.net.br>
 #
-# Versão: 3.1
+# Versão: 3.2
 
 ### Global Variables ###
 declare -r CONFIG="$HOME"/.config/$(basename $0).user
@@ -26,7 +26,7 @@ function root_open() { #(pass, file)
 (echo $1 | sudo -S -- bash -c eval\ "'$ROOT_SOCKET --remote-tab $2'")&>/dev/null
 if [ $? != 0 ]; then
     echo -e "\nIncorrect password!\n"
-    if [ -z $confDebug ]; then
+    if [ -n "$confDebug" ]; then
         echo "[DEBUG] Config File:"
         echo $(cat "$CONFIG")
         echo "[DEBUG] pass: $confPassword"
@@ -83,7 +83,7 @@ for file in ${@}; do
 
     owner=$(stat -c '%U' $file)
 
-    if [ -z $confDebug ]; then
+    if [ -n "$confDebug" ]; then
         echo "[DEBUG] owner: $owner ->> $file"
     fi
 
