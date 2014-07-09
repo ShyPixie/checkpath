@@ -5,40 +5,45 @@
 # Copyright (C) 2012~2014 Lara Maia <lara@craft.net.br>
 #                         Fernando Manfredi <blackice@craft.net.br>
 #
-# Versão: 2.1
+# Versão: 3.0
+
+### Global Variables ###
+declare -r CONFIG="$HOME"/.config/$(basename $0).user
+declare -r USER_SOCKET="gvim --servername GVIM_CHECKPATH"
+declare -r ROOT_SOCKET="gvim --servername GVIM_ROOT_CHECKPATH"
 
 function user_not_found() {
     echo -e '\nConfiguration file not found.'
     echo -e 'It is need for access files with root permissions.\n'
     read -s -p "Write your password: " pass
-    echo -e "user=$USER\npass=$pass" > ${HOME}/.config/$(basename $0).user
+    echo "confUser=$USER" > "$CONFIG"
+    echo "confPassword=$pass" >> "$CONFIG"
 }
 
-# Fix Paths with spaces
-IFS=$(echo -en "\n\b")
-
-USER_SOCKET="gvim --servername GVIM_CHECKPATH"
-ROOT_SOCKET="gvim --servername GVIM_ROOT_CHECKPATH"
-
-# Config
-source ${HOME}/.config/$(basename $0).user >/dev/null 2>&1 || user_not_found
-
-function root_open() {
-# $1 = pass | $2 = file
+function root_open() { #(pass, file)
 (echo $1 | sudo -S -- bash -c eval\ "'$ROOT_SOCKET --remote-tab $2'")&>/dev/null
 if [ $? != 0 ]; then
     echo -e "\nIncorrect password!\n"
+    if [ -z $confDebug ]; then
+        echo "[DEBUG] Config File:"
+        echo $(cat "$CONFIG")
+        echo "[DEBUG] pass: $confPassword"
+    fi
     echo -e "Run again to fix this.\n"
-    rm -f ${HOME}/.config/$(basename $0).user
+    rm -f "$CONFIG"
     exit 1
 fi
 }
 
-function check_server() {
+function check_server() { #(type, pass)
     if [ "$1" == "root" ]; then
         pgrep -U root -fx $ROOT_SOCKET >/dev/null 2>&1
         if [ $? != 0 ]; then
-            (echo $2 | sudo -S -- bash -c eval\ "'$ROOT_SOCKET'") &
+            if [ "$2" == "bypass" ]; then
+                (eval $ROOT_SOCKET)&>/dev/null
+            else
+                (echo $2 | sudo -S -- bash -c eval\ "'$ROOT_SOCKET'")&>/dev/null
+            fi
         fi
     else
         pgrep -U $USER -fx $USER_SOCKET >/dev/null 2>&1
@@ -50,10 +55,10 @@ function check_server() {
     while true; do
         if [ "$1" == "root" ]; then
             gvim --serverlist | grep ${ROOT_SOCKET:18} >/dev/null 2>&1
-            ret=$?
+            local ret=$?
         else
             gvim --serverlist | grep ${USER_SOCKET:18} >/dev/null 2>&1
-            ret=$?
+            local ret=$?
         fi
 
         if [ $ret == 0 ]; then break; fi
@@ -61,37 +66,40 @@ function check_server() {
     done
 }
 
+# Fix Paths with spaces
+IFS=$(echo -en "\n\b")
+
+# Load Configuration (bypass if user is root)
+if [ `id -u` != 0 ]; then
+    source "$CONFIG" >/dev/null 2>&1 || user_not_found
+fi
+
+# Check and open files
 for file in ${@}; do
-    # if already run with root user,
-    # read with root socket only.
-    if [ `id -u` == 0 ]; then
-        check_server root $pass
-        (root_open $pass "$file") &
-    # if not, check file permissions
-    else:
-        if [ "${file:0:1}" == "/" ]; then
+    # if not is an absolute path, make it be
+    test ${file:0:1} != "/" && file="$PWD/$file"
 
-            test_file=${file%/*}
-            test "$test_file" == "" && test_file="/"
+    owner=$(stat -c '%U' $file)
 
-            if [ "$(ls -l -d $test_file | awk '{print $3}')" == "root" ]; then
-                check_server root $pass
-                (root_open $pass "$file") &
-            else
-                check_server user
-                (eval $USER_SOCKET --remote-tab "$file") &
-            fi
-        else
-            if [ "$(ls -l -d `pwd`|awk '{print $3}')" == "root" ]; then
-                check_server root $pass
-                (root_open $pass "$file") &
-            else
-                check_server user
-                (eval $USER_SOCKET --remote-tab "$file") &
-            fi
-        fi
+    if [ -z $confDebug ]; then
+        echo "[DEBUG] owner: $owner ->> $file"
     fi
-    sleep .3
+
+    # if already login with root user, use
+    #the root socket and bypass sudo command
+    if [ `id -u` == 0 ]; then
+        check_server root bypass
+        (eval $ROOT_SOCKET --remote-tab "$file") &
+    # if file owner is root, use root socket
+    elif [ "$owner" == 'root' ]; then
+        check_server root $confPassword
+        (root_open $confPassword "$file") &
+    else
+        check_server user $confPassword
+        (eval $USER_SOCKET --remote-tab "$file") &
+    fi
+
+    sleep .3 # I/O Delay
 done
 
 exit 0
